@@ -20,6 +20,7 @@ class Player(Widget):  #! PLAYER
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
         self.bind(pos=self.update_rect)
+        self.invincible = False
 
     def load_gif_as_texture(self, image_path):
         gif = Image.open(image_path)
@@ -41,6 +42,7 @@ class Player(Widget):  #! PLAYER
 
 class Enemy(Widget):  #! ENEMIES
     def __init__(self, **kwargs):
+        self.speed = kwargs.pop('speed', 2)
         super(Enemy, self).__init__(**kwargs)
         self.size = (30, 30)
         self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\ufo_by_Bodzio855.png'
@@ -58,23 +60,52 @@ class Enemy(Widget):  #! ENEMIES
         texture.flip_vertical()
         return texture
 
-    def move_towards(self, target):
+    def move_towards(self, target, speed): 
         direction = Vector(target.x - self.x, target.y - self.y).normalize()
-        self.velocity = direction * 2 
+        self.velocity = direction * speed  
         self.pos = Vector(*self.velocity) + self.pos
 
     def update_rect(self, *args):
         self.rect.pos = self.pos
 
+class Asteroid(Widget):  #! ASTEROID
+    def __init__(self, **kwargs):
+        super(Asteroid, self).__init__(**kwargs)
+        self.size = (40, 40)
+        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\brown_asteroid_by_FunwithPixels.png'
+        self.texture = self.load_png_as_texture(self.image_path)
+        with self.canvas:
+            self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.bind(pos=self.update_rect)
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+
 class Game(Widget):
+    initial_enemy_speed = 2
+
     def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
+        self.enemy_speed = Game.initial_enemy_speed
+        self.setup_game()
+
+    def setup_game(self):
+        self.clear_widgets()
         self.player = Player()
         self.add_widget(self.player)
-        Clock.schedule_interval(self.spawn_enemy, 1) 
-        Clock.schedule_interval(self.update, 1.0 / 60.0)
+        self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
+        self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
+        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 30)
 
-    def spawn_enemy(self, dt):  #! spawning 
+    def spawn_enemy(self, dt):  #! spawning enemies
         edge = random.choice(['top', 'bottom', 'left', 'right'])
         if edge == 'top':
             pos = (random.randint(0, Window.width), Window.height)
@@ -84,17 +115,33 @@ class Game(Widget):
             pos = (0, random.randint(0, Window.height))
         else:
             pos = (Window.width, random.randint(0, Window.height))
-        enemy = Enemy(pos=pos)
+        enemy = Enemy(pos=pos, speed=self.enemy_speed)
         self.add_widget(enemy)
+
+    def spawn_asteroid(self, dt):  #! spawning asteroid
+        pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+        asteroid = Asteroid(pos=pos)
+        self.add_widget(asteroid)
 
     def update(self, dt):
         for child in self.children[:]:
             if isinstance(child, Enemy):
-                child.move_towards(self.player)
-                if self.player.collide_widget(child):
+                child.move_towards(self.player, self.enemy_speed)
+                if self.player.collide_widget(child) and not self.player.invincible:
                     self.end_game()
+            elif isinstance(child, Asteroid):
+                if self.player.collide_widget(child):
+                    self.player.invincible = True
+                    Clock.schedule_once(self.remove_invincibility, 3)
+                    self.remove_widget(child)
+
+    def remove_invincibility(self, dt):
+        self.player.invincible = False
 
     def end_game(self):
+        self.spawn_event.cancel()
+        self.update_event.cancel()
+        self.spawn_asteroid_event.cancel()
         self.clear_widgets()
         self.add_widget(Label(text="Game Over!", font_size='20sp', center=(Window.width / 2, Window.height / 2 + 20)))
         retry_button = Button(text="Retry", size_hint=(None, None), size=(100, 50), pos=(Window.width / 2 - 50, Window.height / 2 - 50))
@@ -103,9 +150,9 @@ class Game(Widget):
         Window.show_cursor = True  
 
     def restart_game(self, instance):
-        self.clear_widgets()
-        self.__init__()
-        Window.show_cursor = False  
+        self.enemy_speed = Game.initial_enemy_speed
+        Window.show_cursor = False
+        self.setup_game()
         Window.bind(mouse_pos=self.player.on_mouse_pos)
 
 class Asteroid_VoyagerApp(App):
