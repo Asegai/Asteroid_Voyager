@@ -76,6 +76,7 @@ class Asteroid(Widget):  #! ASTEROID
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.velocity = Vector(random.uniform(-1, 1), random.uniform(-1, 1)).normalize() * 1
         self.bind(pos=self.update_rect)
 
     def load_png_as_texture(self, image_path):
@@ -86,6 +87,9 @@ class Asteroid(Widget):  #! ASTEROID
         texture.flip_vertical()
         return texture
 
+    def move(self):
+        self.pos = Vector(*self.velocity) + self.pos
+
     def update_rect(self, *args):
         self.rect.pos = self.pos
 
@@ -95,7 +99,23 @@ class Game(Widget):
     def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.enemy_speed = Game.initial_enemy_speed
+        with self.canvas.before:
+            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\background_by_astrellon3_on_reddit.png'
+            self.bg_texture = self.load_png_as_texture(self.bg_image_path)
+            self.bg_rect = Rectangle(texture=self.bg_texture, size=Window.size)
+        Window.bind(on_resize=self.update_background)
         self.setup_game()
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def update_background(self, window, width, height):
+        self.bg_rect.size = (width, height)
 
     def setup_game(self):
         self.clear_widgets()
@@ -105,7 +125,7 @@ class Game(Widget):
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 30)
 
-    def spawn_enemy(self, dt):  #! spawning enemies
+    def spawn_enemy(self, dt): 
         edge = random.choice(['top', 'bottom', 'left', 'right'])
         if edge == 'top':
             pos = (random.randint(0, Window.width), Window.height)
@@ -118,8 +138,10 @@ class Game(Widget):
         enemy = Enemy(pos=pos, speed=self.enemy_speed)
         self.add_widget(enemy)
 
-    def spawn_asteroid(self, dt):  #! spawning asteroid
-        pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+    def spawn_asteroid(self, dt):  
+        center_x = Window.width / 2
+        center_y = Window.height / 2
+        pos = (random.randint(center_x - 100, center_x + 100), random.randint(center_y - 100, center_y + 100))
         asteroid = Asteroid(pos=pos)
         self.add_widget(asteroid)
 
@@ -130,9 +152,12 @@ class Game(Widget):
                 if self.player.collide_widget(child) and not self.player.invincible:
                     self.end_game()
             elif isinstance(child, Asteroid):
+                child.move()
                 if self.player.collide_widget(child):
                     self.player.invincible = True
                     Clock.schedule_once(self.remove_invincibility, 3)
+                    self.remove_widget(child)
+                if child.x <= 0 or child.right >= Window.width or child.y <= 0 or child.top >= Window.height:
                     self.remove_widget(child)
 
     def remove_invincibility(self, dt):
@@ -143,8 +168,9 @@ class Game(Widget):
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
         self.clear_widgets()
-        self.add_widget(Label(text="Game Over!", font_size='20sp', center=(Window.width / 2, Window.height / 2 + 20)))
-        retry_button = Button(text="Retry", size_hint=(None, None), size=(100, 50), pos=(Window.width / 2 - 50, Window.height / 2 - 50))
+        font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
+        self.add_widget(Label(text="Game Over!", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 20)))
+        retry_button = Button(text="Retry?", font_name=font_path, size_hint=(None, None), size=(100, 50), pos=(Window.width / 2 - 50, Window.height / 2 - 50))
         retry_button.bind(on_release=self.restart_game)
         self.add_widget(retry_button)
         Window.show_cursor = True  
