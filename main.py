@@ -9,7 +9,19 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 import random
 import sys
+from kivy.uix.floatlayout import FloatLayout
 from PIL import Image
+
+class MainMenu(Widget):
+    def __init__(self, app, **kwargs):
+        super(MainMenu, self).__init__(**kwargs)
+        self.app = app
+        self.start_button = Button(text='Start Game', size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
+        self.start_button.bind(on_release=self.start_game)
+        self.add_widget(self.start_button)
+
+    def start_game(self, instance):
+        self.app.start_game()
 
 class Player(Widget):  #! PLAYER
     def __init__(self, **kwargs):
@@ -121,9 +133,10 @@ class Game(Widget):
         self.clear_widgets()
         self.player = Player()
         self.add_widget(self.player)
+        Window.bind(mouse_pos=self.player.on_mouse_pos)
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
-        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 30)
+        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 18)
 
     def spawn_enemy(self, dt): 
         edge = random.choice(['top', 'bottom', 'left', 'right'])
@@ -167,6 +180,7 @@ class Game(Widget):
         self.spawn_event.cancel()
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
+        Window.unbind(mouse_pos=self.player.on_mouse_pos)
         self.clear_widgets()
         font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
         self.add_widget(Label(text="Game Over!", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 20)))
@@ -183,10 +197,15 @@ class Game(Widget):
 
 class Asteroid_VoyagerApp(App):
     def build(self):
+        self.root = FloatLayout()
+        self.main_menu = MainMenu(app=self)
+        self.root.add_widget(self.main_menu)
+        return self.root
+
+    def start_game(self):
+        self.root.clear_widgets()
         game = Game()
-        Window.bind(mouse_pos=game.player.on_mouse_pos)
-        Window.show_cursor = False 
-        return game
+        self.root.add_widget(game)
 
 if __name__ == '__main__':
     Asteroid_VoyagerApp().run()
