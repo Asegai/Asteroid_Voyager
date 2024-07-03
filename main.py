@@ -16,7 +16,10 @@ class MainMenu(Widget):
     def __init__(self, app, **kwargs):
         super(MainMenu, self).__init__(**kwargs)
         self.app = app
-        self.start_button = Button(text='Start Game', size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
+        font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
+        self.title_label = Label(text='Asteroid Voyager', font_name=font_path, font_size='40sp', size_hint=(None, None), size=(400, 100), pos=(Window.width / 2 - 200, Window.height / 2 + 100))
+        self.add_widget(self.title_label)
+        self.start_button = Button(text='Start Game', font_name=font_path, size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
         self.start_button.bind(on_release=self.start_game)
         self.add_widget(self.start_button)
 
@@ -111,8 +114,10 @@ class Game(Widget):
     def __init__(self, **kwargs):
         super(Game, self).__init__(**kwargs)
         self.enemy_speed = Game.initial_enemy_speed
+        self.score = 0
+        self.high_score = 0
         with self.canvas.before:
-            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\background_by_astrellon3_on_reddit.png'
+            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\adobe_stock_black_pixel_space.png'
             self.bg_texture = self.load_png_as_texture(self.bg_image_path)
             self.bg_rect = Rectangle(texture=self.bg_texture, size=Window.size)
         Window.bind(on_resize=self.update_background)
@@ -137,6 +142,10 @@ class Game(Widget):
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 18)
+        self.score_event = Clock.schedule_interval(self.increment_score, 1)
+
+    def increment_score(self, dt):
+        self.score += 1
 
     def spawn_enemy(self, dt): 
         edge = random.choice(['top', 'bottom', 'left', 'right'])
@@ -154,7 +163,7 @@ class Game(Widget):
     def spawn_asteroid(self, dt):  
         center_x = Window.width / 2
         center_y = Window.height / 2
-        pos = (random.randint(center_x - 100, center_x + 100), random.randint(center_y - 100, center_y + 100))
+        pos = (random.randint(int(center_x) - 100, int(center_x) + 100), random.randint(int(center_y) - 100, int(center_y) + 100))
         asteroid = Asteroid(pos=pos)
         self.add_widget(asteroid)
 
@@ -180,17 +189,24 @@ class Game(Widget):
         self.spawn_event.cancel()
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
+        self.score_event.cancel()
         Window.unbind(mouse_pos=self.player.on_mouse_pos)
         self.clear_widgets()
         font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
+        self.high_score = max(self.high_score, self.score)
+        score_label = Label(text=f"Score: {self.score}", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 60))
+        high_score_label = Label(text=f"High Score: {self.high_score}", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 100))
+        self.add_widget(score_label)
+        self.add_widget(high_score_label)
         self.add_widget(Label(text="Game Over!", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 20)))
         retry_button = Button(text="Retry?", font_name=font_path, size_hint=(None, None), size=(100, 50), pos=(Window.width / 2 - 50, Window.height / 2 - 50))
         retry_button.bind(on_release=self.restart_game)
         self.add_widget(retry_button)
-        Window.show_cursor = True  
+        Window.show_cursor = True
 
     def restart_game(self, instance):
         self.enemy_speed = Game.initial_enemy_speed
+        self.score = 0
         Window.show_cursor = False
         self.setup_game()
         Window.bind(mouse_pos=self.player.on_mouse_pos)
