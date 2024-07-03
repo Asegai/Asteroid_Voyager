@@ -7,6 +7,7 @@ from kivy.core.window import Window
 from kivy.vector import Vector
 from kivy.uix.label import Label
 from kivy.uix.button import Button
+from kivy.core.audio import SoundLoader
 import random
 import sys
 from kivy.uix.floatlayout import FloatLayout
@@ -22,11 +23,16 @@ class MainMenu(Widget):
         self.start_button = Button(text='Start Game', font_name=font_path, size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
         self.start_button.bind(on_release=self.start_game)
         self.add_widget(self.start_button)
+        self.music = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\flat-8-bit-gaming-music-instrumental-by-SoundUniverseStudio-from-Pixabay.mp3')
+        self.start_button_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\mario-coin-200bpm-from-Pixabay.mp3')
 
     def start_game(self, instance):
+        if self.start_button_sound:
+            self.start_button_sound.play()
         self.app.start_game()
 
-class Player(Widget):  #! PLAYER
+
+class Player(Widget):
     def __init__(self, **kwargs):
         super(Player, self).__init__(**kwargs)
         self.size = (50, 50)
@@ -55,7 +61,7 @@ class Player(Widget):  #! PLAYER
     def update_rect(self, *args):
         self.rect.pos = self.pos
 
-class Enemy(Widget):  #! ENEMIES
+class Enemy(Widget):
     def __init__(self, **kwargs):
         self.speed = kwargs.pop('speed', 2)
         super(Enemy, self).__init__(**kwargs)
@@ -83,7 +89,7 @@ class Enemy(Widget):  #! ENEMIES
     def update_rect(self, *args):
         self.rect.pos = self.pos
 
-class Asteroid(Widget):  #! ASTEROID
+class Asteroid(Widget):
     def __init__(self, **kwargs):
         super(Asteroid, self).__init__(**kwargs)
         self.size = (40, 40)
@@ -111,11 +117,13 @@ class Asteroid(Widget):  #! ASTEROID
 class Game(Widget):
     initial_enemy_speed = 2
 
-    def __init__(self, **kwargs):
+    def __init__(self, app, **kwargs):
         super(Game, self).__init__(**kwargs)
+        self.app = app
         self.enemy_speed = Game.initial_enemy_speed
         self.score = 0
         self.high_score = 0
+        self.asteroid_spawn_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3')
         with self.canvas.before:
             self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\adobe_stock_black_pixel_space.png'
             self.bg_texture = self.load_png_as_texture(self.bg_image_path)
@@ -141,7 +149,7 @@ class Game(Widget):
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
-        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_asteroid, 18)
+        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 18)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
     def increment_score(self, dt):
@@ -160,12 +168,14 @@ class Game(Widget):
         enemy = Enemy(pos=pos, speed=self.enemy_speed)
         self.add_widget(enemy)
 
-    def spawn_asteroid(self, dt):  
+    def spawn_invincible_asteroid(self, dt):  
         center_x = Window.width / 2
         center_y = Window.height / 2
         pos = (random.randint(int(center_x) - 100, int(center_x) + 100), random.randint(int(center_y) - 100, int(center_y) + 100))
         asteroid = Asteroid(pos=pos)
         self.add_widget(asteroid)
+        if self.asteroid_spawn_sound:
+            self.asteroid_spawn_sound.play()
 
     def update(self, dt):
         for child in self.children[:]:
@@ -203,13 +213,19 @@ class Game(Widget):
         retry_button.bind(on_release=self.restart_game)
         self.add_widget(retry_button)
         Window.show_cursor = True
+        if self.app.main_menu.music:
+            self.app.main_menu.music.stop()
 
     def restart_game(self, instance):
+        if self.app.main_menu.start_button_sound:
+            self.app.main_menu.start_button_sound.play()
         self.enemy_speed = Game.initial_enemy_speed
         self.score = 0
         Window.show_cursor = False
         self.setup_game()
         Window.bind(mouse_pos=self.player.on_mouse_pos)
+        if self.app.main_menu.music:
+            self.app.main_menu.music.play()
 
 class Asteroid_VoyagerApp(App):
     def build(self):
@@ -220,8 +236,11 @@ class Asteroid_VoyagerApp(App):
 
     def start_game(self):
         self.root.clear_widgets()
-        game = Game()
+        game = Game(app=self)
         self.root.add_widget(game)
+        if self.main_menu.music:
+            self.main_menu.music.play()
+            self.main_menu.music.loop = True
 
 if __name__ == '__main__':
     Asteroid_VoyagerApp().run()
