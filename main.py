@@ -205,9 +205,9 @@ class Game(Widget):
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
-        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 18)
-        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 7.4)  #! 
-        self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 2)
+        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 24)
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 8.4)  #! 
+        self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 17)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
     def increment_score(self, dt):
@@ -318,6 +318,8 @@ class Game(Widget):
         self.score = 0
         Window.show_cursor = False
         self.setup_game()
+        self.toggle_pause(manual=True)
+        self.toggle_pause(manual=True)
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         if self.app.main_menu.music:
             self.app.main_menu.music.play()
