@@ -180,7 +180,7 @@ class Game(Widget):
         self.freeze_timer = None
         self.asteroid_spawn_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3')
         with self.canvas.before:
-            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\adobe_stock_black_pixel_space.png'
+            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\bg.png'
             self.bg_texture = self.load_png_as_texture(self.bg_image_path)
             self.bg_rect = Rectangle(texture=self.bg_texture, size=Window.size)
         Window.bind(on_resize=self.update_background)
