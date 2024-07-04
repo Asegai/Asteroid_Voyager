@@ -86,7 +86,7 @@ class Enemy(Widget):
 
     def move_towards(self, target, speed): 
         direction = Vector(target.x - self.x, target.y - self.y).normalize()
-        self.velocity = direction * speed  #
+        self.velocity = direction * speed
         self.pos = Vector(*self.velocity) + self.pos
 
     def update_rect(self, *args):
@@ -125,7 +125,36 @@ class ExplodingAsteroid(Widget):
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.velocity = Vector(random.uniform(-1, 1), random.uniform(-1, 1)).normalize() * 1
         self.bind(pos=self.update_rect)
+
+    def move(self):
+        self.pos = Vector(*self.velocity) + self.pos
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+
+class FreezeAsteroid(Widget):
+    def __init__(self, **kwargs):
+        super(FreezeAsteroid, self).__init__(**kwargs)
+        self.size = (40, 40)
+        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\freeze_asteroid_from_terraria.png'
+        self.texture = self.load_png_as_texture(self.image_path)
+        with self.canvas:
+            self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.velocity = Vector(random.uniform(-1, 1), random.uniform(-1, 1)).normalize() * 1
+        self.bind(pos=self.update_rect)
+
+    def move(self):
+        self.pos = Vector(*self.velocity) + self.pos
 
     def load_png_as_texture(self, image_path):
         png = Image.open(image_path)
@@ -148,6 +177,7 @@ class Game(Widget):
         self.score = 0
         self.high_score = 0
         self.paused = False
+        self.freeze_timer = None
         self.asteroid_spawn_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3')
         with self.canvas.before:
             self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\adobe_stock_black_pixel_space.png'
@@ -176,7 +206,8 @@ class Game(Widget):
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 18)
-        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 5)
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 7.4)  #! 
+        self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 2)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
     def increment_score(self, dt):
@@ -212,6 +243,16 @@ class Game(Widget):
             pos = (random.randint(0, Window.width), random.randint(0, Window.height))
             exploding_asteroid = ExplodingAsteroid(pos=pos)
             self.add_widget(exploding_asteroid)
+            if self.asteroid_spawn_sound:
+                self.asteroid_spawn_sound.play()
+
+    def spawn_freeze_asteroid(self, dt):
+        if not self.paused:
+            pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+            freeze_asteroid = FreezeAsteroid(pos=pos)
+            self.add_widget(freeze_asteroid)
+            if self.asteroid_spawn_sound:
+                self.asteroid_spawn_sound.play()
 
     def update(self, dt):
         if not self.paused:
@@ -229,9 +270,15 @@ class Game(Widget):
                     if child.x <= 0 or child.right >= Window.width or child.y <= 0 or child.top >= Window.height:
                         self.remove_widget(child)
                 elif isinstance(child, ExplodingAsteroid):
+                    child.move()
                     if self.player.collide_widget(child):
                         self.remove_widget(child)
                         self.clear_enemies()
+                elif isinstance(child, FreezeAsteroid):
+                    child.move()
+                    if self.player.collide_widget(child):
+                        self.freeze_game(3)
+                        self.remove_widget(child)
 
     def remove_invincibility(self, dt):
         self.player.invincible = False
@@ -246,6 +293,7 @@ class Game(Widget):
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
         self.spawn_exploding_asteroid_event.cancel()
+        self.spawn_freeze_asteroid_event.cancel()
         self.score_event.cancel()
         Window.unbind(mouse_pos=self.player.on_mouse_pos)
         self.clear_widgets()
@@ -277,14 +325,23 @@ class Game(Widget):
 
     def on_key_down(self, window, key, scancode, codepoint, modifier):
         if codepoint == 'p':
-            self.toggle_pause()
+            self.toggle_pause(manual=True)
 
-    def toggle_pause(self):
+    def toggle_pause(self, manual=False):
         self.paused = not self.paused
         if self.paused:
             Clock.unschedule(self.update)
+            if manual:
+                self.freeze_timer = None
         else:
             Clock.schedule_interval(self.update, 1.0 / 60.0)
+            if self.freeze_timer:
+                self.freeze_timer.cancel()
+                self.freeze_timer = None
+
+    def freeze_game(self, duration):
+        self.toggle_pause()
+        self.freeze_timer = Clock.schedule_once(lambda dt: self.toggle_pause(), duration)
 
 class Asteroid_VoyagerApp(App):
     def build(self):
