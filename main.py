@@ -83,7 +83,7 @@ class Enemy(Widget):
 
     def move_towards(self, target, speed): 
         direction = Vector(target.x - self.x, target.y - self.y).normalize()
-        self.velocity = direction * speed  
+        self.velocity = direction * speed  #
         self.pos = Vector(*self.velocity) + self.pos
 
     def update_rect(self, *args):
@@ -123,12 +123,14 @@ class Game(Widget):
         self.enemy_speed = Game.initial_enemy_speed
         self.score = 0
         self.high_score = 0
+        self.paused = False
         self.asteroid_spawn_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3')
         with self.canvas.before:
             self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\adobe_stock_black_pixel_space.png'
             self.bg_texture = self.load_png_as_texture(self.bg_image_path)
             self.bg_rect = Rectangle(texture=self.bg_texture, size=Window.size)
         Window.bind(on_resize=self.update_background)
+        Window.bind(on_key_down=self.on_key_down)
         self.setup_game()
 
     def load_png_as_texture(self, image_path):
@@ -178,19 +180,20 @@ class Game(Widget):
             self.asteroid_spawn_sound.play()
 
     def update(self, dt):
-        for child in self.children[:]:
-            if isinstance(child, Enemy):
-                child.move_towards(self.player, self.enemy_speed)
-                if self.player.collide_widget(child) and not self.player.invincible:
-                    self.end_game()
-            elif isinstance(child, Asteroid):
-                child.move()
-                if self.player.collide_widget(child):
-                    self.player.invincible = True
-                    Clock.schedule_once(self.remove_invincibility, 3)
-                    self.remove_widget(child)
-                if child.x <= 0 or child.right >= Window.width or child.y <= 0 or child.top >= Window.height:
-                    self.remove_widget(child)
+        if not self.paused:
+            for child in self.children[:]:
+                if isinstance(child, Enemy):
+                    child.move_towards(self.player, self.enemy_speed)
+                    if self.player.collide_widget(child) and not self.player.invincible:
+                        self.end_game()
+                elif isinstance(child, Asteroid):
+                    child.move()
+                    if self.player.collide_widget(child):
+                        self.player.invincible = True
+                        Clock.schedule_once(self.remove_invincibility, 3)
+                        self.remove_widget(child)
+                    if child.x <= 0 or child.right >= Window.width or child.y <= 0 or child.top >= Window.height:
+                        self.remove_widget(child)
 
     def remove_invincibility(self, dt):
         self.player.invincible = False
@@ -226,6 +229,17 @@ class Game(Widget):
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         if self.app.main_menu.music:
             self.app.main_menu.music.play()
+
+    def on_key_down(self, window, key, scancode, codepoint, modifier):
+        if codepoint == 'p':
+            self.toggle_pause()
+
+    def toggle_pause(self):
+        self.paused = not self.paused
+        if self.paused:
+            Clock.unschedule(self.update)
+        else:
+            Clock.schedule_interval(self.update, 1.0 / 60.0)
 
 class Asteroid_VoyagerApp(App):
     def build(self):
