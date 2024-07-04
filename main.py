@@ -33,8 +33,9 @@ class MainMenu(Widget):
 
 
 class Player(Widget):
-    def __init__(self, **kwargs):
+    def __init__(self, game, **kwargs):
         super(Player, self).__init__(**kwargs)
+        self.game = game
         self.size = (50, 50)
         self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\spaceship_by_simeon_templar_.gif'
         self.texture = self.load_gif_as_texture(self.image_path)
@@ -53,10 +54,12 @@ class Player(Widget):
         return texture
 
     def on_touch_move(self, touch):
-        self.center = touch.pos
+        if not self.game.paused:
+            self.center = touch.pos
 
     def on_mouse_pos(self, window, pos):
-        self.center = pos
+        if not self.game.paused:
+            self.center = pos
 
     def update_rect(self, *args):
         self.rect.pos = self.pos
@@ -114,6 +117,27 @@ class Asteroid(Widget):
     def update_rect(self, *args):
         self.rect.pos = self.pos
 
+class ExplodingAsteroid(Widget):
+    def __init__(self, **kwargs):
+        super(ExplodingAsteroid, self).__init__(**kwargs)
+        self.size = (40, 40)
+        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_by_thekokoricky_on_reddit.png'
+        self.texture = self.load_png_as_texture(self.image_path)
+        with self.canvas:
+            self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.bind(pos=self.update_rect)
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+
 class Game(Widget):
     initial_enemy_speed = 2
 
@@ -146,38 +170,48 @@ class Game(Widget):
 
     def setup_game(self):
         self.clear_widgets()
-        self.player = Player()
+        self.player = Player(game=self)
         self.add_widget(self.player)
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 18)
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 5)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
     def increment_score(self, dt):
-        self.score += 1
+        if not self.paused:
+            self.score += 1
 
-    def spawn_enemy(self, dt): 
-        edge = random.choice(['top', 'bottom', 'left', 'right'])
-        if edge == 'top':
-            pos = (random.randint(0, Window.width), Window.height)
-        elif edge == 'bottom':
-            pos = (random.randint(0, Window.width), 0)
-        elif edge == 'left':
-            pos = (0, random.randint(0, Window.height))
-        else:
-            pos = (Window.width, random.randint(0, Window.height))
-        enemy = Enemy(pos=pos, speed=self.enemy_speed)
-        self.add_widget(enemy)
+    def spawn_enemy(self, dt):
+        if not self.paused:
+            edge = random.choice(['top', 'bottom', 'left', 'right'])
+            if edge == 'top':
+                pos = (random.randint(0, Window.width), Window.height)
+            elif edge == 'bottom':
+                pos = (random.randint(0, Window.width), 0)
+            elif edge == 'left':
+                pos = (0, random.randint(0, Window.height))
+            else:
+                pos = (Window.width, random.randint(0, Window.height))
+            enemy = Enemy(pos=pos, speed=self.enemy_speed)
+            self.add_widget(enemy)
 
-    def spawn_invincible_asteroid(self, dt):  
-        center_x = Window.width / 2
-        center_y = Window.height / 2
-        pos = (random.randint(int(center_x) - 100, int(center_x) + 100), random.randint(int(center_y) - 100, int(center_y) + 100))
-        asteroid = Asteroid(pos=pos)
-        self.add_widget(asteroid)
-        if self.asteroid_spawn_sound:
-            self.asteroid_spawn_sound.play()
+    def spawn_invincible_asteroid(self, dt):
+        if not self.paused:
+            center_x = Window.width / 2
+            center_y = Window.height / 2
+            pos = (random.randint(int(center_x) - 100, int(center_x) + 100), random.randint(int(center_y) - 100, int(center_y) + 100))
+            asteroid = Asteroid(pos=pos)
+            self.add_widget(asteroid)
+            if self.asteroid_spawn_sound:
+                self.asteroid_spawn_sound.play()
+
+    def spawn_exploding_asteroid(self, dt):
+        if not self.paused:
+            pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+            exploding_asteroid = ExplodingAsteroid(pos=pos)
+            self.add_widget(exploding_asteroid)
 
     def update(self, dt):
         if not self.paused:
@@ -194,14 +228,24 @@ class Game(Widget):
                         self.remove_widget(child)
                     if child.x <= 0 or child.right >= Window.width or child.y <= 0 or child.top >= Window.height:
                         self.remove_widget(child)
+                elif isinstance(child, ExplodingAsteroid):
+                    if self.player.collide_widget(child):
+                        self.remove_widget(child)
+                        self.clear_enemies()
 
     def remove_invincibility(self, dt):
         self.player.invincible = False
+
+    def clear_enemies(self):
+        for child in self.children[:]:
+            if isinstance(child, Enemy):
+                self.remove_widget(child)
 
     def end_game(self):
         self.spawn_event.cancel()
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
+        self.spawn_exploding_asteroid_event.cancel()
         self.score_event.cancel()
         Window.unbind(mouse_pos=self.player.on_mouse_pos)
         self.clear_widgets()
@@ -229,6 +273,7 @@ class Game(Widget):
         Window.bind(mouse_pos=self.player.on_mouse_pos)
         if self.app.main_menu.music:
             self.app.main_menu.music.play()
+        self.paused = False
 
     def on_key_down(self, window, key, scancode, codepoint, modifier):
         if codepoint == 'p':
