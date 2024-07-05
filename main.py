@@ -206,7 +206,8 @@ class Game(Widget):
         self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 24)
-        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 8.4)  #! 
+        self.spawn_boss_event = Clock.schedule_interval(self.spawn_boss, 60) #!
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 10)  #! 
         self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 17)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
@@ -227,6 +228,16 @@ class Game(Widget):
                 pos = (Window.width, random.randint(0, Window.height))
             enemy = Enemy(pos=pos, speed=self.enemy_speed)
             self.add_widget(enemy)
+
+    def spawn_boss(self, dt):
+        if not self.paused:
+            pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+            boss = Boss(pos=pos)
+            self.add_widget(boss)
+            self.clear_enemies()
+            Clock.unschedule(self.spawn_enemy)
+            if self.asteroid_spawn_sound:
+                self.asteroid_spawn_sound.play()
 
     def spawn_invincible_asteroid(self, dt):
         if not self.paused:
@@ -261,6 +272,10 @@ class Game(Widget):
                     child.move_towards(self.player, self.enemy_speed)
                     if self.player.collide_widget(child) and not self.player.invincible:
                         self.end_game()
+                elif isinstance(child, Boss):
+                    child.move_towards(self.player, self.enemy_speed)
+                    if self.player.collide_widget(child) and not self.player.invincible:
+                        self.end_game()
                 elif isinstance(child, Asteroid):
                     child.move()
                     if self.player.collide_widget(child):
@@ -274,6 +289,8 @@ class Game(Widget):
                     if self.player.collide_widget(child):
                         self.remove_widget(child)
                         self.clear_enemies()
+                        self.clear_boss()
+                        
                 elif isinstance(child, FreezeAsteroid):
                     child.move()
                     if self.player.collide_widget(child):
@@ -287,7 +304,13 @@ class Game(Widget):
         for child in self.children[:]:
             if isinstance(child, Enemy):
                 self.remove_widget(child)
-
+    
+    def clear_boss(self):
+        for child in self.children[:]:
+            if isinstance(child, Boss):
+                self.remove_widget(child)
+                Clock.schedule_interval(self.spawn_enemy, 1)
+        
     def end_game(self):
         self.spawn_event.cancel()
         self.update_event.cancel()
@@ -344,6 +367,34 @@ class Game(Widget):
     def freeze_game(self, duration):
         self.toggle_pause()
         self.freeze_timer = Clock.schedule_once(lambda dt: self.toggle_pause(), duration)
+
+class Boss(Widget):
+    def __init__(self, **kwargs):
+        self.speed = kwargs.pop('speed', 2)
+        super(Boss, self).__init__(**kwargs)
+        self.size = (180, 180)
+        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\ufo_by_Bodzio855.png'
+        self.texture = self.load_png_as_texture(self.image_path)
+        with self.canvas:
+            self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.velocity = Vector(0, 0)
+        self.bind(pos=self.update_rect)
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def move_towards(self, target, speed): 
+        direction = Vector(target.x - self.x, target.y - self.y).normalize()
+        self.velocity = direction * speed
+        self.pos = Vector(*self.velocity) + self.pos
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
 
 class Asteroid_VoyagerApp(App):
     def build(self):
