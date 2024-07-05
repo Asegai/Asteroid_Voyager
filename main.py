@@ -1,6 +1,6 @@
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.graphics import Color, Rectangle
+from kivy.graphics import Rectangle
 from kivy.graphics.texture import Texture
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -9,22 +9,26 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.core.audio import SoundLoader
 import random
-import sys
+import os
+import json
 from kivy.uix.floatlayout import FloatLayout
 from PIL import Image
+
+
 
 class MainMenu(Widget):
     def __init__(self, app, **kwargs):
         super(MainMenu, self).__init__(**kwargs)
         self.app = app
-        font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        font_path = os.path.join(BASE_PATH, 'pixel.ttf')
         self.title_label = Label(text='Asteroid Voyager', font_name=font_path, font_size='40sp', size_hint=(None, None), size=(400, 100), pos=(Window.width / 2 - 200, Window.height / 2 + 100))
         self.add_widget(self.title_label)
         self.start_button = Button(text='Start Game', font_name=font_path, size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
         self.start_button.bind(on_release=self.start_game)
         self.add_widget(self.start_button)
-        self.music = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\flat-8-bit-gaming-music-instrumental-by-SoundUniverseStudio-from-Pixabay.mp3')
-        self.start_button_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\mario-coin-200bpm-from-Pixabay.mp3')
+        self.music = SoundLoader.load(os.path.join(BASE_PATH, 'flat-8-bit-gaming-music-instrumental-by-SoundUniverseStudio-from-Pixabay.mp3'))
+        self.start_button_sound = SoundLoader.load(os.path.join(BASE_PATH, 'mario-coin-200bpm-from-Pixabay.mp3'))
 
     def start_game(self, instance):
         if self.start_button_sound:
@@ -32,12 +36,14 @@ class MainMenu(Widget):
         self.app.start_game()
 
 
+
 class Player(Widget):
     def __init__(self, game, **kwargs):
         super(Player, self).__init__(**kwargs)
         self.game = game
         self.size = (50, 50)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\spaceship_by_simeon_templar_.gif'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'spaceship_by_simeon_templar_.gif')
         self.texture = self.load_gif_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
@@ -69,7 +75,8 @@ class Enemy(Widget):
         self.speed = kwargs.pop('speed', 2)
         super(Enemy, self).__init__(**kwargs)
         self.size = (30, 30)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\ufo_by_Bodzio855.png'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'ufo_by_Bodzio855.png')
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
@@ -96,7 +103,8 @@ class Asteroid(Widget):
     def __init__(self, **kwargs):
         super(Asteroid, self).__init__(**kwargs)
         self.size = (40, 40)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\brown_asteroid_by_FunwithPixels.png'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'brown_asteroid_by_FunwithPixels.png')
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
@@ -121,7 +129,8 @@ class ExplodingAsteroid(Widget):
     def __init__(self, **kwargs):
         super(ExplodingAsteroid, self).__init__(**kwargs)
         self.size = (40, 40)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_by_thekokoricky_on_reddit.png'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'asteroid_by_thekokoricky_on_reddit.png')
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
@@ -146,7 +155,34 @@ class FreezeAsteroid(Widget):
     def __init__(self, **kwargs):
         super(FreezeAsteroid, self).__init__(**kwargs)
         self.size = (40, 40)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\freeze_asteroid_from_terraria.png'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'freeze_asteroid_from_terraria.png')
+        self.texture = self.load_png_as_texture(self.image_path)
+        with self.canvas:
+            self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
+        self.velocity = Vector(random.uniform(-1, 1), random.uniform(-1, 1)).normalize() * 1
+        self.bind(pos=self.update_rect)
+
+    def move(self):
+        self.pos = Vector(*self.velocity) + self.pos
+
+    def load_png_as_texture(self, image_path):
+        png = Image.open(image_path)
+        png_data = png.convert('RGBA').tobytes()
+        texture = Texture.create(size=png.size)
+        texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
+        texture.flip_vertical()
+        return texture
+
+    def update_rect(self, *args):
+        self.rect.pos = self.pos
+
+class RadioactiveAsteroid(Widget):
+    def __init__(self, **kwargs):
+        super(RadioactiveAsteroid, self).__init__(**kwargs)
+        self.size = (40, 40)
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'radioactive_asteroid_from_r-slash-PixelArt.png')
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
@@ -178,13 +214,20 @@ class Game(Widget):
         self.high_score = 0
         self.paused = False
         self.freeze_timer = None
-        self.asteroid_spawn_sound = SoundLoader.load(r'C:\Users\aesas\Desktop\Asteroid_Miner\asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3')
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.asteroid_spawn_sound = SoundLoader.load(os.path.join(BASE_PATH, 'asteroid_spawn_sound_by_Lesiakower_on_Pixabay.mp3'))
         with self.canvas.before:
-            self.bg_image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\bg.png'
+            self.bg_image_path = os.path.join(BASE_PATH, 'bg.png')
             self.bg_texture = self.load_png_as_texture(self.bg_image_path)
             self.bg_rect = Rectangle(texture=self.bg_texture, size=Window.size)
         Window.bind(on_resize=self.update_background)
         Window.bind(on_key_down=self.on_key_down)
+        try:
+            with open('high_score.json', 'r') as f:
+                high_score_data = json.load(f)
+            self.high_score = high_score_data.get('high_score', 0)
+        except (FileNotFoundError, json.JSONDecodeError):
+            self.high_score = 0
         self.setup_game()
 
     def load_png_as_texture(self, image_path):
@@ -207,8 +250,9 @@ class Game(Widget):
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
         self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 24)
         self.spawn_boss_event = Clock.schedule_interval(self.spawn_boss, 60) #!
-        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 10)  #! 
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 10)
         self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 17)
+        self.spawn_radioactive_asteroid_event = Clock.schedule_interval(self.spawn_radioactive_asteroid, 25)
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
 
     def increment_score(self, dt):
@@ -265,6 +309,14 @@ class Game(Widget):
             if self.asteroid_spawn_sound:
                 self.asteroid_spawn_sound.play()
 
+    def spawn_radioactive_asteroid(self, dt):
+        if not self.paused:
+            pos = (random.randint(0, Window.width), random.randint(0, Window.height))
+            radioactive_asteroid = RadioactiveAsteroid(pos=pos)
+            self.add_widget(radioactive_asteroid)
+            if self.asteroid_spawn_sound:
+                self.asteroid_spawn_sound.play()
+
     def update(self, dt):
         if not self.paused:
             for child in self.children[:]:
@@ -290,12 +342,31 @@ class Game(Widget):
                         self.remove_widget(child)
                         self.clear_enemies()
                         self.clear_boss()
-                        
                 elif isinstance(child, FreezeAsteroid):
                     child.move()
                     if self.player.collide_widget(child):
                         self.freeze_game(3)
                         self.remove_widget(child)
+                elif isinstance(child, RadioactiveAsteroid):
+                    child.move()
+                    if self.player.collide_widget(child):
+                        self.remove_widget(child)
+                        self.start_removing_enemies()
+
+    def remove_nearby_enemies(self, dt):
+        player_pos = Vector(self.player.center_x, self.player.center_y)
+        for child in self.children[:]:
+            if isinstance(child, Enemy):
+                enemy_pos = Vector(child.center_x, child.center_y)
+                if player_pos.distance(enemy_pos) < 100:
+                    self.remove_widget(child)
+
+    def start_removing_enemies(self):
+        Clock.schedule_once(self.stop_removing_enemies, 3)
+        Clock.schedule_interval(self.remove_nearby_enemies, 0.1)
+    
+    def stop_removing_enemies(self, dt):
+        Clock.unschedule(self.remove_nearby_enemies)
 
     def remove_invincibility(self, dt):
         self.player.invincible = False
@@ -313,15 +384,22 @@ class Game(Widget):
         
     def end_game(self):
         self.spawn_event.cancel()
+        self.spawn_boss_event.cancel()
         self.update_event.cancel()
         self.spawn_asteroid_event.cancel()
         self.spawn_exploding_asteroid_event.cancel()
         self.spawn_freeze_asteroid_event.cancel()
         self.score_event.cancel()
+        self.spawn_radioactive_asteroid_event.cancel()
         Window.unbind(mouse_pos=self.player.on_mouse_pos)
         self.clear_widgets()
-        font_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\pixel.ttf'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        font_path = os.path.join(BASE_PATH, 'pixel.ttf')
         self.high_score = max(self.high_score, self.score)
+        self.high_score = max(self.high_score, self.score)
+        high_score_data = {'high_score': self.high_score}
+        with open('high_score.json', 'w') as f:
+            json.dump(high_score_data, f)
         score_label = Label(text=f"Score: {self.score}", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 60))
         high_score_label = Label(text=f"High Score: {self.high_score}", font_size='20sp', font_name=font_path, center=(Window.width / 2, Window.height / 2 + 100))
         self.add_widget(score_label)
@@ -373,7 +451,8 @@ class Boss(Widget):
         self.speed = kwargs.pop('speed', 2)
         super(Boss, self).__init__(**kwargs)
         self.size = (180, 180)
-        self.image_path = r'C:\Users\aesas\Desktop\Asteroid_Miner\ufo_by_Bodzio855.png'
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        self.image_path = os.path.join(BASE_PATH, 'ufo_by_Bodzio855.png')
         self.texture = self.load_png_as_texture(self.image_path)
         with self.canvas:
             self.rect = Rectangle(pos=self.pos, size=self.size, texture=self.texture)
