@@ -36,3 +36,14 @@ Welcome to **Asteroid Voyager**, a thrilling space adventure game built with Pyt
      ```sh
      python main.py
      ```
+
+## Acknowledgements
+- Background music by SoundUniverseStudio on Pixabay.
+- Button press sound from Pixabay.
+- Asteroid spawn sound by Lesiakower on Pixabay.
+- Asteroid image by u/thekokoricky on Reddit.
+- Brown asteroid image by FunwithPixels.
+- Freeze asteroid image from Terraria.
+- Radioactive asteroid image from r/PixelArt on Reddit.
+- Pause button image from Pixilart but made by me.
+- Spaceship image by simeon_templar.
