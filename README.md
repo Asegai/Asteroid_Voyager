@@ -47,3 +47,5 @@ Welcome to **Asteroid Voyager**, a thrilling space adventure game built with Pyt
 - Radioactive asteroid image from r/PixelArt on Reddit.
 - Pause button image from Pixilart but made by me.
 - Spaceship image by simeon_templar.
+
+### Recommended difficulty: 4
