@@ -8,6 +8,9 @@ from kivy.vector import Vector
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.core.audio import SoundLoader
+from kivy.uix.slider import Slider
+from kivy.uix.image import Image
+from kivy.properties import ObjectProperty
 import random
 import os
 import json
@@ -27,8 +30,20 @@ class MainMenu(Widget):
         self.start_button = Button(text='Start Game', font_name=font_path, size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 25))
         self.start_button.bind(on_release=self.start_game)
         self.add_widget(self.start_button)
+
+
+        self.difficulty_slider = Slider(min=1, max=10, value=5, size_hint=(None, None), size=(400, 50), pos=(Window.width / 2 - 200, Window.height / 2 - 100))
+        self.add_widget(self.difficulty_slider)
+        self.difficulty_label = Label(text='Difficulty: 5', font_name=font_path, font_size='20sp', size_hint=(None, None), size=(200, 50), pos=(Window.width / 2 - 100, Window.height / 2 - 150))
+        self.add_widget(self.difficulty_label)
+        self.difficulty_slider.bind(value=self.on_slider_value_change)
+
+
         self.music = SoundLoader.load(os.path.join(BASE_PATH, 'flat-8-bit-gaming-music-instrumental-by-SoundUniverseStudio-from-Pixabay.mp3'))
         self.start_button_sound = SoundLoader.load(os.path.join(BASE_PATH, 'mario-coin-200bpm-from-Pixabay.mp3'))
+
+    def on_slider_value_change(self, instance, value):
+        self.difficulty_label.text = f'Difficulty: {int(value)}'
 
     def start_game(self, instance):
         if self.start_button_sound:
@@ -237,23 +252,35 @@ class Game(Widget):
         texture.blit_buffer(png_data, colorfmt='rgba', bufferfmt='ubyte')
         texture.flip_vertical()
         return texture
+    
+    def display_pause_button(self):
+        BASE_PATH = os.path.dirname(os.path.abspath(__file__))
+        pause_button_path = os.path.join(BASE_PATH, 'pause_button_from_Pixilart.png')
+        self.pause_button = Button(size_hint=(None, None), size=(50, 50),
+                                pos=(Window.width / 2 - 25, Window.height - 60),
+                                background_normal=pause_button_path,
+                                background_down=pause_button_path)
+        self.pause_button.bind(on_release=self.toggle_pause)
+        self.add_widget(self.pause_button)
 
     def update_background(self, window, width, height):
         self.bg_rect.size = (width, height)
 
     def setup_game(self):
+        self.difficulty = self.app.main_menu.difficulty_slider.value
         self.clear_widgets()
         self.player = Player(game=self)
         self.add_widget(self.player)
         Window.bind(mouse_pos=self.player.on_mouse_pos)
-        self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 1)
+        self.spawn_event = Clock.schedule_interval(self.spawn_enemy, 3 / self.difficulty)
         self.update_event = Clock.schedule_interval(self.update, 1.0 / 60.0)
-        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 24)
+        self.spawn_asteroid_event = Clock.schedule_interval(self.spawn_invincible_asteroid, 10 * (self.difficulty / 5))
         self.spawn_boss_event = Clock.schedule_interval(self.spawn_boss, 60) #!
-        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 10)
-        self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 17)
-        self.spawn_radioactive_asteroid_event = Clock.schedule_interval(self.spawn_radioactive_asteroid, 25)
+        self.spawn_exploding_asteroid_event = Clock.schedule_interval(self.spawn_exploding_asteroid, 5 * (self.difficulty / 5))
+        self.spawn_freeze_asteroid_event = Clock.schedule_interval(self.spawn_freeze_asteroid, 15 * (self.difficulty / 5))
+        self.spawn_radioactive_asteroid_event = Clock.schedule_interval(self.spawn_radioactive_asteroid, 20 * (self.difficulty / 5))
         self.score_event = Clock.schedule_interval(self.increment_score, 1)
+        self.display_pause_button()
 
     def increment_score(self, dt):
         if not self.paused:
@@ -432,12 +459,15 @@ class Game(Widget):
 
     def toggle_pause(self, manual=False):
         self.paused = not self.paused
+
         if self.paused:
             Clock.unschedule(self.update)
+            Window.show_cursor = True
             if manual:
                 self.freeze_timer = None
         else:
             Clock.schedule_interval(self.update, 1.0 / 60.0)
+            Window.show_cursor = False
             if self.freeze_timer:
                 self.freeze_timer.cancel()
                 self.freeze_timer = None
