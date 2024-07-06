@@ -31,8 +31,8 @@ Welcome to **Asteroid Voyager**, a thrilling space adventure game built with Pyt
 
 2. **Run the Game**:
    - Navigate to the downloaded folder.
-   - Run the provided `start_game.cmd` file as an administrator. This file sets up the environment and ensures all dependencies are installed.
-   - After running the `start_game.cmd`, execute the game with Python:
+   - Run the provided `install_python_and_kivy.bat` file as an administrator. This file sets up the environment and ensures all dependencies are installed.
+   - After running the `install_python_and_kivy.bat`, execute the game with Python:
      ```sh
      python main.py
      ```
